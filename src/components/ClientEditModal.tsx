@@ -20,6 +20,7 @@ const blank: ClientInsert = {
   postcode: '',
   contact_number: '',
   email: '',
+  company_number: '',
 };
 
 export default function ClientEditModal({ client, onClose, onSaved, onDeleted }: Props) {
@@ -77,6 +78,9 @@ export default function ClientEditModal({ client, onClose, onSaved, onDeleted }:
         <div className="grid grid-cols-2 gap-3 mb-3">
           <Field label="Client code" {...field('code')} />
           <Field label="Client type" {...field('type')} placeholder="e.g. Limited Company (By Shares)" />
+        </div>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <Field label="Company number" {...field('company_number')} placeholder="e.g. 12345678" />
         </div>
         <Field label="Client name" {...field('name')} required className="mb-3" />
         <Field label="Address line 1" {...field('addr1')} className="mb-3" />

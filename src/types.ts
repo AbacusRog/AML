@@ -10,6 +10,7 @@ export interface Client {
   postcode: string;
   contact_number: string;
   email: string;
+  company_number?: string | null;
 }
 
 export type ClientInsert = Omit<Client, 'id'>;

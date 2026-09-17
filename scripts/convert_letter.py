@@ -83,21 +83,9 @@ def convert(path):
 
     return content
 
-if __name__ == '__main__':
-    import sys
-    if len(sys.argv) < 2:
-        print('Usage: python convert_letter.py <input.docx> [output.json]')
-        print('Reads a Word "Schedule of Services" letter and produces a pdfmake')
-        print('content JSON file, using the docx\'s own paragraph/numbering data')
-        print('(not an HTML round-trip) so numbered and lettered lists come out')
-        print('correctly nested. Keep {name} / {address} / {date} as literal')
-        print('placeholder text in the source docx — they pass through unchanged')
-        print('and are substituted at runtime by the app.')
-        sys.exit(1)
-    src = sys.argv[1]
-    outname = sys.argv[2] if len(sys.argv) > 2 else src.rsplit('.', 1)[0] + '.json'
+for src in ['Engagement_Letter_Limited_Company_TEMPLATE.docx', 'Engagement_Letter_2026_TEMPLATE.docx']:
     out = convert(src)
+    outname = src.replace('_TEMPLATE.docx', '_content.json')
     with open(outname, 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
-    print(f'{src} -> {outname} ({len(out)} blocks)')
-    print('Copy the output into src/assets/letter-content/ (as company.json or director.json).')
+    print(src, '->', outname, f'({len(out)} blocks)')

@@ -6,6 +6,7 @@ import ClientPicker from './components/ClientPicker';
 import ImportPanel from './components/ImportPanel';
 import GeneratePanel from './components/GeneratePanel';
 import ClientEditModal from './components/ClientEditModal';
+import CompaniesHouseCheck from './components/CompaniesHouseCheck';
 import { getLinkedDirectors, saveDirectorLinks, removeDirectorLink } from './lib/directorLinks';
 import type { Client } from './types';
 
@@ -15,6 +16,7 @@ export default function App() {
   const [directors, setDirectors] = useState<Client[]>([]);
   const [linkedNote, setLinkedNote] = useState<string | null>(null);
   const [editingClient, setEditingClient] = useState<Client | null | 'new'>(null);
+  const [checkingCompaniesHouse, setCheckingCompaniesHouse] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -148,9 +150,18 @@ export default function App() {
                     <div className="font-semibold text-[13.5px]">{company.name}</div>
                     <div className="text-[11px] text-goldDeep uppercase tracking-wide">Company</div>
                   </div>
-                  <button className="text-xs text-red-700" onClick={() => handleSetCompany(null)}>
-                    Remove
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCheckingCompaniesHouse(true)}
+                      className="text-xs text-[#3E4C63] hover:text-ink whitespace-nowrap"
+                    >
+                      Check Companies House
+                    </button>
+                    <button className="text-xs text-red-700" onClick={() => handleSetCompany(null)}>
+                      Remove
+                    </button>
+                  </div>
                 </li>
               )}
               {directors.map((d) => (
@@ -182,6 +193,14 @@ export default function App() {
           onClose={() => setEditingClient(null)}
           onSaved={handleClientSaved}
           onDeleted={handleClientDeleted}
+        />
+      )}
+
+      {checkingCompaniesHouse && company && (
+        <CompaniesHouseCheck
+          company={company}
+          onClose={() => setCheckingCompaniesHouse(false)}
+          onUpdated={(updated) => setCompany(updated)}
         />
       )}
     </div>
