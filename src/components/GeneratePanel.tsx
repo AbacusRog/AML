@@ -44,11 +44,11 @@ export default function GeneratePanel({ company, directors }: Props) {
       <div className="mb-4 space-y-2">
         <label className="flex items-center gap-2 text-sm cursor-pointer">
           <input type="checkbox" checked={wantLetter} onChange={(e) => setWantLetter(e.target.checked)} />
-          Engagement letter (Word)
+          Engagement letter (PDF)
         </label>
         <label className="flex items-center gap-2 text-sm cursor-pointer">
           <input type="checkbox" checked={wantAml} onChange={(e) => setWantAml(e.target.checked)} />
-          AML periodic review (PDF)
+          AML periodic review (PDF) — company only
         </label>
       </div>
 
@@ -80,8 +80,9 @@ export default function GeneratePanel({ company, directors }: Props) {
       )}
 
       <p className="text-xs text-[#3E4C63] mt-4 leading-relaxed">
-        Letters carry today's date. The AML review defaults every Yes/No/N-A row to <strong>Yes</strong>,
-        overall risk to <strong>Low</strong>, and the decision to{' '}
+        Letters carry today's date and download as PDF for everyone selected. The AML review is
+        generated for the company only (not its directors), and defaults every Yes/No/N-A row to{' '}
+        <strong>Yes</strong>, overall risk to <strong>Low</strong>, and the decision to{' '}
         <strong>Continue without additional conditions</strong> — open the downloaded PDF to adjust any
         of that before sending.
       </p>

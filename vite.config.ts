@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// docx/pdf templates are imported with `?url` and fetched at runtime,
-// so Vite needs to treat them as static assets rather than trying to parse them.
+// The AML PDF template is imported with `?url` and fetched at runtime, so
+// Vite needs to treat it as a static asset rather than trying to parse it.
 export default defineConfig({
   plugins: [react()],
-  assetsInclude: ['**/*.docx', '**/*.pdf'],
+  assetsInclude: ['**/*.pdf'],
 });

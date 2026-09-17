@@ -1,11 +1,14 @@
-import JSZip from 'jszip';
 import { PDFDocument, PDFCheckBox } from 'pdf-lib';
 import { saveAs } from 'file-saver';
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
 import type { Client } from '../types';
 
-import companyTemplateUrl from '../assets/Engagement_Letter_Limited_Company_TEMPLATE.docx?url';
-import directorTemplateUrl from '../assets/Engagement_Letter_2026_TEMPLATE.docx?url';
+import companyContentJson from '../assets/letter-content/company.json';
+import directorContentJson from '../assets/letter-content/director.json';
 import amlTemplateUrl from '../assets/Client_AML_Periodic_Review_Fillable.pdf?url';
+
+pdfMake.vfs = pdfFonts;
 
 export function fullAddress(c: Pick<Client, 'addr1' | 'addr2' | 'town' | 'county' | 'postcode'>): string {
   return [c.addr1, c.addr2, c.town, c.county, c.postcode].filter(Boolean).join(', ');
@@ -25,37 +28,55 @@ export function safeFilename(s: string): string {
   return s.replace(/[\\/:*?"<>|]/g, '').trim();
 }
 
-function escapeXml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c] as string)
-  );
-}
-
 async function fetchArrayBuffer(url: string): Promise<ArrayBuffer> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Could not load template at ${url}`);
   return res.arrayBuffer();
 }
 
-/** Fill a Word "Schedule of Services" template (name / address / date merge fields). */
-export async function fillDocx(
+type PdfNode = string | { [key: string]: unknown } | PdfNode[];
+
+/** Recursively substitute {name}/{address}/{date} tokens in a pdfmake content tree. */
+function substituteTokens(node: PdfNode, values: { name: string; address: string; date: string }): PdfNode {
+  if (Array.isArray(node)) return node.map((n) => substituteTokens(n, values));
+  if (node && typeof node === 'object') {
+    const out: { [key: string]: unknown } = {};
+    for (const k of Object.keys(node)) out[k] = substituteTokens(node[k] as PdfNode, values);
+    return out;
+  }
+  if (typeof node === 'string') {
+    return node.replace('{name}', values.name).replace('{address}', values.address).replace('{date}', values.date);
+  }
+  return node;
+}
+
+/**
+ * Render the letter's pdfmake content (pre-extracted from the Word template's
+ * own paragraph/numbering data — see /supabase or the build scripts for how —
+ * so the numbered list structure is taken from Word's ground truth rather
+ * than guessed at from converted HTML) with this client's merge fields.
+ */
+export async function fillLetterPdf(
   kind: 'company' | 'director',
   data: { name: string; address: string; date: string }
 ): Promise<Blob> {
-  const url = kind === 'company' ? companyTemplateUrl : directorTemplateUrl;
-  const buf = await fetchArrayBuffer(url);
-  const zip = await JSZip.loadAsync(buf);
-  const path = 'word/document.xml';
-  let xml = await zip.file(path)!.async('string');
-  xml = xml
-    .replace('{name}', escapeXml(data.name))
-    .replace('{address}', escapeXml(data.address || ''))
-    .replace('{date}', escapeXml(data.date));
-  zip.file(path, xml);
-  return zip.generateAsync({
-    type: 'blob',
-    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  });
+  const template = kind === 'company' ? companyContentJson : directorContentJson;
+  const content = substituteTokens(template as PdfNode, data);
+
+  return pdfMake
+    .createPdf({
+      content: content as unknown as Record<string, unknown>,
+      defaultStyle: { fontSize: 10.5, lineHeight: 1.15 },
+      pageMargins: [56, 56, 56, 64],
+      footer: (currentPage: number, pageCount: number) => ({
+        text: `Page ${currentPage} of ${pageCount}`,
+        alignment: 'right',
+        margin: [0, 0, 56, 24],
+        fontSize: 9,
+        color: '#555555',
+      }),
+    })
+    .getBlob();
 }
 
 /**
@@ -147,12 +168,13 @@ export async function generateAll({
   for (const { row, kind } of jobs) {
     try {
       if (wantLetter) {
-        const blob = await fillDocx(kind, { name: row.name, address: fullAddress(row), date: todayLong() });
-        saveAs(blob, `Engagement Letter - ${safeFilename(row.name)}.docx`);
+        const blob = await fillLetterPdf(kind, { name: row.name, address: fullAddress(row), date: todayLong() });
+        saveAs(blob, `Engagement Letter - ${safeFilename(row.name)}.pdf`);
         onProgress?.(`Engagement letter ready — ${row.name}`);
         await delay(250);
       }
-      if (wantAml) {
+      if (wantAml && kind === 'company') {
+        // AML review only applies to the company itself, not its directors.
         const blob = await fillAmlPdf(row, reviewerName);
         saveAs(blob, `AML Review - ${safeFilename(row.name)}.pdf`);
         onProgress?.(`AML review ready — ${row.name}`);
