@@ -46,11 +46,15 @@ export default function App() {
 
   async function handleSaveLink() {
     if (!company || !directors.length) return;
-    await saveDirectorLinks(
-      company.id,
-      directors.map((d) => d.id)
-    );
-    setLinkedNote('Saved — these directors will auto-populate next time you pick this company.');
+    try {
+      await saveDirectorLinks(
+        company.id,
+        directors.map((d) => d.id)
+      );
+      setLinkedNote('Saved — these directors will auto-populate next time you pick this company.');
+    } catch (err) {
+      setLinkedNote((err as Error).message);
+    }
   }
 
   async function handleRemoveDirector(d: Client) {

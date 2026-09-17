@@ -23,7 +23,10 @@ export async function getLinkedDirectors(companyId: string): Promise<Client[]> {
 export async function saveDirectorLinks(companyId: string, directorIds: string[]): Promise<void> {
   if (!directorIds.length) return;
   const rows = directorIds.map((director_id) => ({ company_id: companyId, director_id }));
-  await supabase.from('doc_generator_company_directors').upsert(rows, { onConflict: 'company_id,director_id' });
+  const { error } = await supabase
+    .from('doc_generator_company_directors')
+    .upsert(rows, { onConflict: 'company_id,director_id' });
+  if (error) throw new Error(`Could not save director list: ${error.message}`);
 }
 
 export async function removeDirectorLink(companyId: string, directorId: string): Promise<void> {

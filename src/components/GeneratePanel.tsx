@@ -22,8 +22,11 @@ export default function GeneratePanel({ company, directors }: Props) {
     setLog([]);
     if (company && directors.length) {
       // Quietly remember this pairing so it's auto-suggested next time —
-      // no need for a separate save step in the common case.
-      saveDirectorLinks(company.id, directors.map((d) => d.id)).catch(() => {});
+      // logged rather than thrown, so a link-save hiccup never blocks the
+      // documents the user actually asked for.
+      saveDirectorLinks(company.id, directors.map((d) => d.id)).catch((err) =>
+        setLog((l) => [{ msg: `Director list not saved: ${(err as Error).message}`, err: true }, ...l])
+      );
     }
     await generateAll({
       company,
