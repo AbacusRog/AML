@@ -5,12 +5,16 @@ import Login from './components/Login';
 import ClientPicker from './components/ClientPicker';
 import ImportPanel from './components/ImportPanel';
 import GeneratePanel from './components/GeneratePanel';
+import ClientEditModal from './components/ClientEditModal';
+import { getLinkedDirectors, saveDirectorLinks, removeDirectorLink } from './lib/directorLinks';
 import type { Client } from './types';
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined); // undefined = still checking
   const [company, setCompany] = useState<Client | null>(null);
   const [directors, setDirectors] = useState<Client[]>([]);
+  const [linkedNote, setLinkedNote] = useState<string | null>(null);
+  const [editingClient, setEditingClient] = useState<Client | null | 'new'>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -23,6 +27,47 @@ export default function App() {
 
   function toggleDirector(c: Client) {
     setDirectors((prev) => (prev.some((d) => d.id === c.id) ? prev.filter((d) => d.id !== c.id) : [...prev, c]));
+  }
+
+  async function handleSetCompany(c: Client | null) {
+    setCompany(c);
+    setLinkedNote(null);
+    if (!c) return;
+    const linked = await getLinkedDirectors(c.id);
+    if (linked.length) {
+      setDirectors((prev) => {
+        const existingIds = new Set(prev.map((d) => d.id));
+        const toAdd = linked.filter((d) => !existingIds.has(d.id));
+        return [...prev, ...toAdd];
+      });
+      setLinkedNote(`Auto-added ${linked.length} director${linked.length === 1 ? '' : 's'} previously linked to this company.`);
+    }
+  }
+
+  async function handleSaveLink() {
+    if (!company || !directors.length) return;
+    await saveDirectorLinks(
+      company.id,
+      directors.map((d) => d.id)
+    );
+    setLinkedNote('Saved — these directors will auto-populate next time you pick this company.');
+  }
+
+  async function handleRemoveDirector(d: Client) {
+    if (company) await removeDirectorLink(company.id, d.id);
+    toggleDirector(d);
+  }
+
+  // Client edit/add modal callbacks
+  function handleClientSaved(saved: Client) {
+    if (company?.id === saved.id) setCompany(saved);
+    setDirectors((prev) => prev.map((d) => (d.id === saved.id ? saved : d)));
+    setEditingClient(null);
+  }
+  function handleClientDeleted(id: string) {
+    if (company?.id === id) setCompany(null);
+    setDirectors((prev) => prev.filter((d) => d.id !== id));
+    setEditingClient(null);
   }
 
   return (
@@ -58,22 +103,37 @@ export default function App() {
               Find and select
             </h2>
             <p className="text-xs text-[#3E4C63] mb-3">
-              Mark one row as the company, and any number as directors.
+              Mark one row as the company, and any number as directors. Picking a company
+              auto-adds any directors you've linked to it before.
             </p>
             <ClientPicker
               company={company}
               directors={directors}
-              onSetCompany={setCompany}
+              onSetCompany={handleSetCompany}
               onToggleDirector={toggleDirector}
+              onEdit={(c) => setEditingClient(c)}
+              onAddNew={() => setEditingClient('new')}
             />
           </section>
         </div>
 
         <div className="space-y-5">
           <section className="bg-white border border-[#DAD5C9] rounded-sm p-5">
-            <h2 className="text-lg mb-1" style={{ fontFamily: 'Georgia, serif' }}>
-              Selected
-            </h2>
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-lg" style={{ fontFamily: 'Georgia, serif' }}>
+                Selected
+              </h2>
+              {company && directors.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleSaveLink}
+                  className="text-[11px] text-goldDeep hover:underline whitespace-nowrap"
+                >
+                  Save director list
+                </button>
+              )}
+            </div>
+            {linkedNote && <p className="text-xs text-[#3E4C63] mb-2">{linkedNote}</p>}
             {!company && directors.length === 0 && (
               <p className="text-sm text-[#3E4C63]">Nothing selected yet.</p>
             )}
@@ -84,7 +144,7 @@ export default function App() {
                     <div className="font-semibold text-[13.5px]">{company.name}</div>
                     <div className="text-[11px] text-goldDeep uppercase tracking-wide">Company</div>
                   </div>
-                  <button className="text-xs text-red-700" onClick={() => setCompany(null)}>
+                  <button className="text-xs text-red-700" onClick={() => handleSetCompany(null)}>
                     Remove
                   </button>
                 </li>
@@ -95,7 +155,7 @@ export default function App() {
                     <div className="font-semibold text-[13.5px]">{d.name}</div>
                     <div className="text-[11px] text-goldDeep uppercase tracking-wide">Director</div>
                   </div>
-                  <button className="text-xs text-red-700" onClick={() => toggleDirector(d)}>
+                  <button className="text-xs text-red-700" onClick={() => handleRemoveDirector(d)}>
                     Remove
                   </button>
                 </li>
@@ -111,6 +171,15 @@ export default function App() {
           </section>
         </div>
       </main>
+
+      {editingClient !== null && (
+        <ClientEditModal
+          client={editingClient === 'new' ? null : editingClient}
+          onClose={() => setEditingClient(null)}
+          onSaved={handleClientSaved}
+          onDeleted={handleClientDeleted}
+        />
+      )}
     </div>
   );
 }

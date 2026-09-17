@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { generateAll } from '../lib/docGen';
+import { saveDirectorLinks } from '../lib/directorLinks';
 import type { Client } from '../types';
 
 interface Props {
@@ -19,6 +20,11 @@ export default function GeneratePanel({ company, directors }: Props) {
   async function handleGenerate() {
     setBusy(true);
     setLog([]);
+    if (company && directors.length) {
+      // Quietly remember this pairing so it's auto-suggested next time —
+      // no need for a separate save step in the common case.
+      saveDirectorLinks(company.id, directors.map((d) => d.id)).catch(() => {});
+    }
     await generateAll({
       company,
       directors,

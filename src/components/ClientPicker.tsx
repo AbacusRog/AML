@@ -8,9 +8,11 @@ interface Props {
   directors: Client[];
   onSetCompany: (c: Client | null) => void;
   onToggleDirector: (c: Client) => void;
+  onEdit: (c: Client) => void;
+  onAddNew: () => void;
 }
 
-export default function ClientPicker({ company, directors, onSetCompany, onToggleDirector }: Props) {
+export default function ClientPicker({ company, directors, onSetCompany, onToggleDirector, onEdit, onAddNew }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,22 +39,31 @@ export default function ClientPicker({ company, directors, onSetCompany, onToggl
 
   return (
     <div>
-      <input
-        type="search"
-        placeholder="Search clients…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="w-full px-3 py-2 border border-[#DAD5C9] rounded-sm outline-none focus:border-gold text-sm"
-      />
+      <div className="flex gap-2 mb-3">
+        <input
+          type="search"
+          placeholder="Search clients…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="flex-1 px-3 py-2 border border-[#DAD5C9] rounded-sm outline-none focus:border-gold text-sm"
+        />
+        <button
+          type="button"
+          onClick={onAddNew}
+          className="text-sm px-3 py-2 border border-[#DAD5C9] rounded-sm hover:border-gold whitespace-nowrap"
+        >
+          + Add client
+        </button>
+      </div>
 
-      {loading && <p className="text-xs text-[#3E4C63] mt-2">Searching…</p>}
+      {loading && <p className="text-xs text-[#3E4C63]">Searching…</p>}
 
       {!loading && query && results.length === 0 && (
         <p className="text-sm text-[#3E4C63] text-center py-5">No matches.</p>
       )}
 
       {results.length > 0 && (
-        <table className="w-full mt-3 text-[13.5px]">
+        <table className="w-full text-[13.5px]">
           <thead>
             <tr className="text-left text-[12px] text-[#3E4C63] border-b border-[#DAD5C9]">
               <th className="py-1.5 pr-2">Client</th>
@@ -100,6 +111,13 @@ export default function ClientPicker({ company, directors, onSetCompany, onToggl
                         }`}
                       >
                         + Director
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onEdit(c)}
+                        className="text-[11.5px] px-2.5 py-1 rounded-full border border-[#DAD5C9] text-[#3E4C63] hover:border-gold"
+                      >
+                        Edit
                       </button>
                     </div>
                   </td>
