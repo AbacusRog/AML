@@ -165,18 +165,20 @@ export async function generateAll({
   if (company) jobs.push({ row: company, kind: 'company' });
   directors.forEach((d) => jobs.push({ row: d, kind: 'director' }));
 
+  const year = new Date().getFullYear();
+
   for (const { row, kind } of jobs) {
     try {
       if (wantLetter) {
         const blob = await fillLetterPdf(kind, { name: row.name, address: fullAddress(row), date: todayLong() });
-        saveAs(blob, `Engagement Letter - ${safeFilename(row.name)}.pdf`);
+        saveAs(blob, `Engagement Letter - ${safeFilename(row.name)} ${year}.pdf`);
         onProgress?.(`Engagement letter ready — ${row.name}`);
         await delay(250);
       }
       if (wantAml && kind === 'company') {
         // AML review only applies to the company itself, not its directors.
         const blob = await fillAmlPdf(row, reviewerName);
-        saveAs(blob, `AML Review - ${safeFilename(row.name)}.pdf`);
+        saveAs(blob, `AML Review - ${safeFilename(row.name)} ${year}.pdf`);
         onProgress?.(`AML review ready — ${row.name}`);
         await delay(250);
       }
